@@ -2,22 +2,22 @@
 #include <QtGlobal>
 #include <QtGui>
 const double g2r=180.0/M_PI;
-GL::GL(QWidget *parent) : QGLWidget(parent) {
+GL::GL(double om,double ch,double ph,QWidget *parent) : QGLWidget(parent) {
    setFormat(QGLFormat(QGL::DoubleBuffer | QGL::DepthBuffer) );
    lambda=1.5418;
-   bgCR=0.3;
-   bgCG=0.3;
-   bgCB=0.3;
+   bgCR=0.9;
+   bgCG=0.9;
+   bgCB=0.9;
    bgCA=1.0;
    rbal=0.015;
    rezi=ewald=dirlat=rlat=true;
    SCANPHI=recording=pause=false;
-   SCANOMEGA=false;
+   LAU=SCANOMEGA=false;
    orient=Matrix(1,0,0, 0,1,0, 0,0,1);
    rm=orient;
-   chi=0;
-   phi=0;
-   omega=0;
+   chi=ch;
+   phi=ph;
+   omega=om;
    QFile l("lattice");
    l.open(QIODevice::ReadOnly|QIODevice::Text);
    QByteArray lba=l.readAll();
@@ -57,6 +57,11 @@ GL::GL(QWidget *parent) : QGLWidget(parent) {
        RC=(A%B)*rV;
        Matrix R=Matrix(RA,RB,RC);
        printf("V=%f 1/V=%f det=%f\n",V,rV,determinant(R));
+       double ra=0.0;
+       printf("%f %f %f %f %f %f\n",ra=sqrt(Norm(RA)),sqrt(Norm(RB)),sqrt(Norm(RC)),winkel(RB,RC),winkel(RC,RA),winkel(RA,RB));
+       V3 H320=3*RA+2*RB;
+       ra=sqrt(Norm(H320));
+       printf("%f %f\n",winkel(H320,RA),asin(0.5*ra*lambda)*180/M_PI);
      } 
    }
    applyLatticeCentro(git);
@@ -67,7 +72,7 @@ GL::GL(QWidget *parent) : QGLWidget(parent) {
      printf("%g %g %g\n",trans.at(i).x,trans.at(i).y,trans.at(i).z);
    }
    */
-
+ cryrot();
 }
 
 void GL::toggl_rezi(){
@@ -125,6 +130,20 @@ void GL::cryrot(){
   RA=RA*orient;
   RB=RB*orient;
   RC=RC*orient;
+  updateGL();
+}
+
+void GL::dolaue(){
+  LAU=true;
+  lambda=2.0;
+  double r=rbal;
+  rbal=0.0002;
+  updateGL();
+  rbal=r;
+}
+
+void GL::scanphi(){
+  SCANPHI=true;
   updateGL();
 }
 
@@ -193,97 +212,102 @@ void GL::scanLambda(double start,double end){
     */
   }while (lambda>=end);
   emit detect();
-  R.clear();
   recording=false;
+  updateGL();
 }
 
 void GL::keyPressEvent(QKeyEvent *event){
   int k=event->key();
   bool g=(event->modifiers()&Qt::ShiftModifier);
   switch (k){
-    case Qt::Key_F1:
-      {
-        double m[16]={1,0,0,0,
-                      0,1,0,0,
-                      0,0,1,0,
-                      0,0,0,1};
-        glMatrixMode(GL_MODELVIEW);
-        glLoadMatrixd(m);
-      }
-      break;
+    case Qt::Key_F1: {
+                       double m[16]={1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+                       glMatrixMode(GL_MODELVIEW);
+                       glLoadMatrixd(m);
+                     }
+                     break;
     case Qt::Key_Z:
-      {
-        double m[16]={0,0,-1,0,
-                      0,1,0,0,
-                      1,0,0,0,
-                      0,0,0,1};
-        glMatrixMode(GL_MODELVIEW);
-        glLoadMatrixd(m);
-      }
-      break;
+                     if (g) {
+                       double m[16]={0,0, 1,0, 0,1,0,0, -1,0,0,0, 0,0,0,1};
+                       glMatrixMode(GL_MODELVIEW);
+                       glLoadMatrixd(m);
+                     } else {
+                       double m[16]={0,0,-1,0, 0,1,0,0, 1,0,0,0, 0,0,0,1};
+                       glMatrixMode(GL_MODELVIEW);
+                       glLoadMatrixd(m);
+                     }
+                     break;
     case Qt::Key_Y:
-      {
-        double m[16]={1,0,0,0,
-                      0,0,1,0,
-                      0,-1,0,0,
-                      0,0,0,1};
-        glMatrixMode(GL_MODELVIEW);
-        glLoadMatrixd(m);
-      }
-      break;
+                     if (g) {
+                       double m[16]={-1,0,0,0, 0,0,-1,0, 0,-1,0,0, 0,0,0,1};
+                       glMatrixMode(GL_MODELVIEW);
+                       glLoadMatrixd(m);
+                     } else {                     
+                       double m[16]={1,0,0,0, 0,0,1,0, 0,-1,0,0, 0,0,0,1};
+                       glMatrixMode(GL_MODELVIEW);
+                       glLoadMatrixd(m);
+                     }
+                     break;
+    case Qt::Key_F11:
+                     chi=45.0;omega=-54.735561032;phi=0;
+                     cryrot();
     case Qt::Key_F12:
-      recording=true;
-      updateGL();
-      emit detect();
-      recording=false;
-      R.clear();
-    break;  
+                     recording=true;
+                     updateGL();
+                     emit detect();
+                     recording=false;
+                     R.clear();
+                     break;  
     case Qt::Key_F3:
-      SCANPHI=true;
-      break;
-    case Qt::Key_F4:
-      scanLambda(2.0,0.9);
-      break;
+                     SCANPHI=true;
+                     break;
+    case Qt::Key_F4:{
+                      double ballsave=rbal;
+                      rbal=0.002;
+                      scanLambda(2.0,0.9);
+                      rbal=ballsave;
+                      break;
+                    }
     case Qt::Key_F5:
-      SCANOMEGA=true;
-      break;
+                    SCANOMEGA=true;
+                    break;
     case Qt::Key_F2:
-      phi=0;
-      chi=0;
-      omega=0;
-      break;
+                    phi=0;
+                    chi=0;
+                    omega=0;
+                    break;
     case Qt::Key_F:
-      phi+=(g)?-0.1:0.1;
-      break;
+                    phi+=(g)?-0.1:0.1;
+                    break;
     case Qt::Key_L:
-      lambda+=(g)?-0.0001:0.0001;
-      break;
+                    lambda+=(g)?-0.0001:0.0001;
+                    break;
     case Qt::Key_O:
-      omega+=(g)?-0.1:0.1;
-      break;
+                    omega+=(g)?-0.1:0.1;
+                    break;
     case Qt::Key_C:
-      chi+=(g)?-0.1:0.1;
-      break;
+                    chi+=(g)?-0.1:0.1;
+                    break;
     case Qt::Key_R:
-      R.clear();
-      break;
+                    R.clear();
+                    break;
     case Qt::Key_Q:
-      QCoreApplication::quit();
-      break;
+                    QCoreApplication::quit();
+                    break;
     case Qt::Key_M:
-      static double M[16];
-      glGetDoublev(GL_MODELVIEW_MATRIX,M);
-      printf("%12.6f %12.6f %12.6f %12.6f\n%12.6f %12.6f %12.6f %12.6f\n%12.6f %12.6f %12.6f %12.6f\n%12.6f %12.6f %12.6f %12.6f\n"
-          ,M[0] ,M[1] ,M[2] ,M[3]
-          ,M[4] ,M[5] ,M[6] ,M[7]
-          ,M[8] ,M[9] ,M[10] ,M[11]
-          ,M[12] ,M[13] ,M[14] ,M[15]
-          );
-      break;
+                    static double M[16];
+                    glGetDoublev(GL_MODELVIEW_MATRIX,M);
+                    printf("%12.6f %12.6f %12.6f %12.6f\n%12.6f %12.6f %12.6f %12.6f\n%12.6f %12.6f %12.6f %12.6f\n%12.6f %12.6f %12.6f %12.6f\n"
+                        ,M[0] ,M[1] ,M[2] ,M[3]
+                        ,M[4] ,M[5] ,M[6] ,M[7]
+                        ,M[8] ,M[9] ,M[10] ,M[11]
+                        ,M[12] ,M[13] ,M[14] ,M[15]
+                        );
+                    break;
     default: return;
   }
   cryrot();
-  qDebug()<<omega<<chi<<phi<<lambda;
+  //  qDebug()<<omega<<chi<<phi<<lambda;
 }
 
 void glRotateL( const double dang, const double x, const double y, const double z ) {
@@ -337,7 +361,7 @@ void GL::moveX(double speed){
 }
 
 void GL::moveY(double speed){
-  printf("%g\n",speed*0.00005);
+//  printf("%g\n",speed*0.00005);
   glTranslateL(speed*0.00005,0.0,0.0);
   updateGL();  
 }
@@ -406,6 +430,14 @@ void GL::paintGL(){
     if (omega<=182) scanOmega(omega,omega+1.0);
     else SCANOMEGA=false;
   }
+  if ((!pause)&&(LAU)&&(!recording)) {
+    qDebug()<<"laulau";
+    if (lambda>1.0) scanLambda(lambda,lambda-0.2);
+    else {
+      LAU=false;
+      R.clear();
+    }
+  }
   glClearColor(bgCR,bgCG,bgCB,bgCA);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glViewport(0, 0, _win_width, _win_height);        
@@ -413,7 +445,7 @@ void GL::paintGL(){
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   double ratio=(double)_win_width/_win_height ;
-//  ratio=1.0;
+  //  ratio=1.0;
   glOrtho(
       -lambda*1.05,lambda*1.05,
       -lambda*1.05/ratio,lambda*1.05/ratio,
@@ -423,6 +455,12 @@ void GL::paintGL(){
   glPushMatrix();
   draw();
   glPopMatrix();
+  glColor4d(0,0,0,1);
+  renderText(10,13,QString("omega=%1 chi=%2 phi=%3 lambda=%4").arg(omega,5,'f',3).arg(chi,5,'f',3)
+  .arg(phi,5,'f',3).arg(lambda,12,'f',6));
+  renderText(10,33,QString("a = %1 b= %2 c= %3 alpha= %4 beta= %5 gamma= %6 ").arg(a).arg(b).arg(c).arg(alpha)
+  .arg(beta).arg(gamma));
+  
 }
 
 void GL::mousePressEvent(QMouseEvent *event){
@@ -2821,15 +2859,20 @@ void GL::mySphere(int bal){
 }
 
 void GL::draw(){
-  double L=1.0/lambda;
-  double ew=L*L/4.0;
-  int minh=(int)(-a/lambda)-1,
+  static bool maxreported=false;
+  double L=2.0/lambda;
+  double ew=1.0/(lambda*lambda);
+  int minh=(int)(-1.9*a/lambda)-1,
       maxh=-minh,
-      mink=(int)(-b/lambda)-1,
+      mink=(int)(-1.9*b/lambda)-1,
       maxk=-mink,
-      minl=(int)(-c/lambda)-1,
+      minl=(int)(-1.9*c/lambda)-1,
       maxl=-minl;
- // qDebug()<<minh<<maxh<<mink<<maxk<<minl<<maxl;
+  int 
+    mih=maxh, mah=minh,
+    mik=maxk, mak=mink,
+    mil=maxl, mal=minl;
+// qDebug()<<minh<<maxh<<mink<<maxk<<minl<<maxl;
   if (ewald){
   glPushMatrix();
   glEnable( GL_LIGHTING ); 
@@ -2844,7 +2887,8 @@ void GL::draw(){
   glPushMatrix();
   //glTranslated(1.0,0.0,0.0);
   glTranslated(0.5*L,0.0,0.0);
-  //glScaled(rV,rV,rV);
+  double scaleDir=pow(rV,1.0/3.0)/3.0;
+  glScaled(scaleDir,scaleDir,scaleDir);
   glLineWidth(3.0);
   glDisable( GL_DEPTH_TEST ); 
   glBegin(GL_LINES);
@@ -2919,7 +2963,7 @@ void GL::draw(){
   if (rezi){
   glPushMatrix();
   glDisable( GL_DEPTH_TEST ); 
-  glPointSize(2.0);
+  glPointSize(2.5);
   for (int h=minh;h<=maxh;h++){
     for (int k=mink;k<=maxk;k++){
       for (int l=minl;l<=maxl;l++){
@@ -2929,7 +2973,15 @@ void GL::draw(){
 //          V3 hkl=V3(h,k,l);
           //if (!HKL.contains(hkl)) glColor4d(1,0,0,1); else 
            // if (!HKL2.contains(hkl))
-            glColor4d(0.3,0.5,1,1);// else glColor4d(0,1,1,1);
+            glColor4d(0.0,0.0,0,1);// else glColor4d(0,1,1,1);
+          mih=qMin(mih,h);
+          mah=qMax(mah,h);
+
+          mik=qMin(mik,k);
+          mak=qMax(mak,k);
+
+          mil=qMin(mil,l);
+          mal=qMax(mal,l);
           glBegin(GL_POINTS);
           glVertex3d(RA.x*h+RB.x*k+RC.x*l, RA.y*h+RB.y*k+RC.y*l,  RA.z*h+RB.z*k+RC.z*l);
           glEnd();
@@ -2951,6 +3003,7 @@ void GL::draw(){
       for (int l=minl;l<=maxl;l++){
         if (absent(h,k,l)) continue;
         V3 H=(h*RA+k*RB+l*RC);
+     
         double d=fabs(ew-Distance(H,r));
         double dd=rbal/4.0;
         if (d<dd){
@@ -2961,8 +3014,13 @@ void GL::draw(){
           reflex.dist=d;
           double alph=exp(-1000*d);
           if ((recording)){//&&(!HKL.contains(hkl))){
-//          double w=winkel(refl,V3(-1,0,0));
-//          printf("%4d%4d%4d %12.5f %12.5f %12.5f %g %g %d\n",h,k,l,refl.x,refl.y,refl.z,lambda,w,R.size());
+          double w=asin(sqrt(Norm(H))*lambda/2)*g2r;
+
+         printf("#%4d%4d%4d %g %g th= %g winkel(a*,k0)=%g winkel(b*,k0)=%g winkel(c*,k0)=%g\n",h,k,l,lambda,sqrt(Norm(H)),w
+             ,winkel(RA,-1.0*r)
+             ,winkel(RC,-1.0*r)
+             ,winkel(RB,-1.0*r)
+             );
           R.append(reflex);
           }/*else if ((recording)&&(!XYZ.contains(refl))){
             int da=HKL.indexOf(hkl);
@@ -2991,6 +3049,10 @@ void GL::draw(){
       }
     }
   }
+    if (!maxreported){
+      printf("%d < h < %d; %d < k < %d; %d < l < %d\n",mih,mah,mik,mak,mil,mal);
+      maxreported=true;
+    }
 
 
 }

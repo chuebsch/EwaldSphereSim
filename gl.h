@@ -188,7 +188,7 @@ struct Refl{
 class GL : public QGLWidget {
 Q_OBJECT
 public:
-  GL(QWidget *parent = 0);
+  GL(double om,double ch,double ph,QWidget *parent = 0);
 
   QFont myFont;
   double lambda,a,b,c,alpha,beta,gamma,V;
@@ -201,7 +201,7 @@ public:
   QList<Refl> R;
   int _win_width,_win_height;
   bool rezi,ewald,dirlat,rlat;
-  bool SCANPHI,SCANOMEGA,pause;
+  bool SCANPHI,SCANOMEGA,LAU,pause;
   // void setMole(molekul m);
   void zoom(double speed);
   void rotY(double speed);
@@ -219,6 +219,8 @@ public slots:
   void toggl_ewald();
   void toggl_dirlat();
   void toggl_rlat();
+  void dolaue();
+  void scanphi();
 
 signals:
   void detect();  

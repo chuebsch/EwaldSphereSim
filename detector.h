@@ -1,10 +1,5 @@
 #include <QtGui>
 #include "gl.h"
-#include <QDialog>
-#include <QGraphicsView>
-#include <QVBoxLayout>
-#include <QGraphicsRectItem>
-#include <QToolBar>
 //#include <QtWidgets>
 
 class Detector : public QDialog {
@@ -23,5 +18,6 @@ public slots:
     QGraphicsView *view;
     QGraphicsScene *scene;
     QGraphicsTextItem *txt;
+    QDoubleSpinBox *thbx,*dist; 
 };
 

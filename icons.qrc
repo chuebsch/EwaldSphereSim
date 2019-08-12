@@ -4,5 +4,6 @@
         <file>zoom-in.png</file>
         <file>zoom-fit.png</file>
         <file>zoom-off.png</file>
+        <file>laue.png</file>
     </qresource>
 </RCC>

@@ -4,7 +4,6 @@
 #include <QtGui>
 #include "gl.h"
 #include "detector.h"
-#include <QMainWindow>
 class MyWindow : public QMainWindow {
      Q_OBJECT
 public:
