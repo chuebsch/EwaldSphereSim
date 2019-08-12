@@ -1,6 +1,6 @@
 #include <QtGui>
 #include "gl.h"
-//#include <QtWidgets>
+#include <QtWidgets>
 
 class Detector : public QDialog {
 Q_OBJECT

@@ -3,10 +3,11 @@
 ######################################################################
 
 TEMPLATE = app
-TARGET = latt
+TARGET = ewaldSphere
 DEPENDPATH += .
 INCLUDEPATH += .
 QT += opengl
+QT += widgets
 
 # Input
 HEADERS += window.h gl.h detector.h
