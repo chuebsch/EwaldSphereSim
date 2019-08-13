@@ -1,7 +1,8 @@
 #include <QtGui>
 #include "gl.h"
+#if (QT_VERSION >= 0x050000)
 #include <QtWidgets>
-
+#endif
 class Detector : public QDialog {
 Q_OBJECT
   public:
